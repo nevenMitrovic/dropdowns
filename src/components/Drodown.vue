@@ -1,10 +1,11 @@
 <template>
   <div class="w-full">
-    <label class="block text-gray-700 font-medium mb-1">{{
+    <label class="block font-medium mb-1" :class="isDisabled ? ' text-gray-400' : ' text-gray-700'">{{
       props.label
     }}</label>
     <select
       v-model="selectedOption"
+      :disabled="isDisabled"
       @change="onSelectChange"
       class="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500"
     >
@@ -28,6 +29,10 @@ const props = defineProps({
   },
   options: {
     type: Array,
+  },
+  isDisabled: {
+    type: Boolean,
+    default: false,
   },
 });
 const emit = defineEmits(["update:modelValue"]);

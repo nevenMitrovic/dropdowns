@@ -12,15 +12,19 @@
         label="Year"
         :options="yearOptions"
         v-model="selectedQueries.year"
+        @change="loadMakes"
       />
       <Dropdown
         label="Make"
         :options="makeOptions"
+        :isDisabled="isDisabledMake"
         v-model="selectedQueries.make"
+        @change="loadModels"
       />
       <Dropdown
         label="Model"
         :options="modelOptions"
+        :isDisabled="isDisabledModel"
         v-model="selectedQueries.model"
       />
 
@@ -42,11 +46,22 @@
 </template>
 
 <script setup>
-import { onMounted, reactive, ref, watch } from "vue";
-import Dropdown from "@/components/Drodown.vue";
+import { onMounted, reactive, ref, computed } from "vue";
+import Dropdown from "./components/Drodown.vue";
 import Modal from "./components/Modal.vue";
 
-const isDisabled = ref(true);
+const isDisabled = computed(() => {
+  return (
+    !selectedQueries.year || !selectedQueries.make || !selectedQueries.model
+  );
+});
+const isDisabledMake = computed(() => {
+  return !selectedQueries.year;
+});
+const isDisabledModel = computed(() => {
+  return !selectedQueries.year || !selectedQueries.make;
+});
+
 const errorMessage = ref(null);
 const modalVisibility = ref(false);
 const yearOptions = ref(["Select an option"]);
@@ -62,111 +77,63 @@ const handleSubmit = () => {
   console.log(selectedQueries);
 };
 
-watch(
-  () => errorMessage.value,
-  () => {
-    modalVisibility.value = !modalVisibility.value;
-  }
-);
-watch(
-  () => selectedQueries,
-  () => {
-    let flag = true;
+const loadMakes = async () => {
+  try {
+    makeOptions.value = ["Select an option"];
+    if (selectedQueries.year) {
+      const res = await fetch(
+        `api/v2/vehicles/makes/?year=${selectedQueries.year}&token=5cbe12fb62f4941267d623499a2a4fd5948fd3ef`
+      );
+      if (!res.ok) throw new Error("Network response was not ok");
 
-    for (const key in selectedQueries) {
-      if (!selectedQueries[key]) {
-        flag = false;
-      }
+      const data = await res.json();
+      data.forEach((item) => {
+        makeOptions.value.push(item.make);
+      });
     }
-
-    if (flag) isDisabled.value = false;
-  },
-  { deep: true }
-);
-watch(
-  () => selectedQueries.year,
-  async () => {
-    try {
-      if (selectedQueries.year) {
-        const res = await fetch(
-          `api/v2/vehicles/makes/?year=${selectedQueries.year}&token=5cbe12fb62f4941267d623499a2a4fd5948fd3ef`,
-          {
-            method: "GET",
-            headers: {
-              "Content-Type": "application/json",
-              Accept: "application/json",
-            },
-          }
-        );
-        if (!res.ok) {
-          throw new Error("Network response was not ok");
-        }
-
-        const data = await res.json();
-        data.forEach((data) => {
-          makeOptions.value.push(data.make);
-        });
-      }
-    } catch (error) {
-      console.error(error);
-      errorMessage.value = error.message;
-    }
+  } catch (error) {
+    console.error(error);
+    errorMessage.value = error.message;
+    modalVisibility.value = true;
   }
-);
-watch(
-  () => selectedQueries.make,
-  async () => {
-    try {
-      if (selectedQueries.make) {
-        const res = await fetch(
-          `api/v2/vehicles/models/?year=${selectedQueries.year}&make=${selectedQueries.make}&token=5cbe12fb62f4941267d623499a2a4fd5948fd3ef`,
-          {
-            method: "GET",
-            headers: {
-              "Content-Type": "application/json",
-              Accept: "application/json",
-            },
-          }
-        );
-        if (!res.ok) {
-          throw new Error("Network response was not ok");
-        }
+};
 
-        const data = await res.json();
-        data.forEach((data) => {
-          modelOptions.value.push(data.model);
-        });
-      }
-    } catch (error) {
-      console.error(error);
-      errorMessage.value = error.message;
+const loadModels = async () => {
+  try {
+    modelOptions.value = ["Select an option"];
+    if (selectedQueries.make) {
+      const res = await fetch(
+        `api/v2/vehicles/models/?year=${selectedQueries.year}&make=${selectedQueries.make}&token=5cbe12fb62f4941267d623499a2a4fd5948fd3ef`
+      );
+      if (!res.ok) throw new Error("Network response was not ok");
+
+      const data = await res.json();
+      data.forEach((item) => {
+        modelOptions.value.push(item.model);
+      });
     }
+  } catch (error) {
+    console.error(error);
+    errorMessage.value = error.message;
+    modalVisibility.value = true;
   }
-);
+};
 
 onMounted(async () => {
   try {
     const res = await fetch(
-      `api/v2/vehicles/years/?token=5cbe12fb62f4941267d623499a2a4fd5948fd3ef`,
-      {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-      }
+      `api/v2/vehicles/years/?token=5cbe12fb62f4941267d623499a2a4fd5948fd3ef`
     );
-    if (!res.ok) {
-      throw new Error("Network response was not ok");
-    }
+    if (!res.ok) throw new Error("Network response was not ok");
 
     const data = await res.json();
-    data.forEach((data) => {
-      yearOptions.value.push(data.year);
+    data.forEach((item) => {
+      yearOptions.value.push(item.year);
     });
   } catch (error) {
     console.error(error);
     errorMessage.value = error.message;
+    modalVisibility.value = true;
   }
 });
 </script>
